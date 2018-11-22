@@ -79,6 +79,7 @@ func (f *RunnerTextFormatter) getColorsAndPrefix(entry *logrus.Entry) (string, s
 		}
 	}
 
+	return "", "", prefix
 	if f.DisableColors {
 		return "", "", prefix
 	}

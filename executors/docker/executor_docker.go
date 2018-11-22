@@ -935,7 +935,9 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 		return nil, err
 	}
 
-	e.builds = append(e.builds, resp.ID)
+	if containerType == "build" {
+		e.builds = append(e.builds, resp.ID)
+	}
 	e.temporary = append(e.temporary, resp.ID)
 	return &inspect, nil
 }
@@ -1052,10 +1054,10 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 
 	case err = <-attachCh:
 		e.killContainer(id, waitCh)
-		e.Debugln("Container", id, "finished with", err)
+		e.Debugln("ATTACH SAYS: Container", id, "finished with", err)
 
 	case err = <-waitCh:
-		e.Debugln("Container", id, "finished with", err)
+		e.Debugln("WAIT SAYS: Container", id, "finished with", err)
 	}
 	return
 }
@@ -1068,6 +1070,16 @@ func (e *executor) removeContainer(ctx context.Context, id string) error {
 	}
 	err := e.client.ContainerRemove(ctx, id, options)
 	e.Debugln("Removed container", id, "with", err)
+	return err
+}
+
+func (e *executor) commitContainer(ctx context.Context, id string) error {
+	options := types.ContainerCommitOptions {
+		Reference: "perkeep-build-"+id[:10]+":latest",
+	    // Config    *container.Config
+	}
+	err := e.client.ContainerCommit(ctx, id, options)
+	e.Debugln("Committed container", id, "with", err)
 	return err
 }
 
@@ -1260,9 +1272,17 @@ func (e *executor) Cleanup() {
 	remove := func(id string) {
 		wg.Add(1)
 		go func() {
+			e.Debugln("REMOVING FROM CLEANUP: ", id)
 			e.removeContainer(ctx, id)
 			wg.Done()
 		}()
+	}
+
+	for _, buildID := range e.builds {
+		e.Debugln("COMMITTING: ", buildID)
+		if err := e.commitContainer(ctx, buildID); err != nil {
+			e.Debugln(fmt.Sprintf("could not commit container %v: %v", buildID, err))
+		}
 	}
 
 	for _, temporaryID := range e.temporary {

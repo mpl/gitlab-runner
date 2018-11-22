@@ -116,6 +116,12 @@ func (c *officialDockerClient) ContainerRemove(ctx context.Context, containerID 
 	return wrapError("ContainerRemove", err, started)
 }
 
+func (c *officialDockerClient) ContainerCommit(ctx context.Context, containerID string, options types.ContainerCommitOptions) error {
+	started := time.Now()
+	_, err := c.client.ContainerCommit(ctx, containerID, options)
+	return wrapError("ContainerCommit", err, started)
+}
+
 func (c *officialDockerClient) ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
 	started := time.Now()
 	rc, err := c.client.ContainerLogs(ctx, container, options)
